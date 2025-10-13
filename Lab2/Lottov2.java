@@ -5,7 +5,7 @@ import java.util.Collections;
 public class Lottov2 {
     public static void main(String[] args) {
         if (args.length != 6) {
-            System.out.println("Użycie: java Lotto liczba1 liczba2 liczba3 liczba4 liczba5 liczba6");
+            System.out.println("Musi byc 6 liczb");
             return;
         }
 
