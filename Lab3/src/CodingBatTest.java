@@ -6,5 +6,7 @@ public class CodingBatTest {
     public void nearHundred() {
         CodingBat test = new CodingBat();
         assertEquals(true,test.nearHundred(93));
+        assertEquals(true,test.nearHundred(202));
+        assertEquals(true,test.nearHundred(106));
     }
 }
