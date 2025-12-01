@@ -1,7 +1,7 @@
 module org.example.samochodgui {
     requires javafx.controls;
     requires javafx.fxml;
-    exports symulator;
+    exports org.example.samochod;
 
 
     opens org.example.samochodgui to javafx.fxml;
