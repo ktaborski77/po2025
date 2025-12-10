@@ -46,7 +46,7 @@ Michał Firek, Maciej Babral
 Arkadiusz Kępa, Kamil Ciask
 
 19) System Kasowy (POS) w Sklepie: Skanowanie produktów, rabaty, różne metody płatności, drukowanie paragonów i zwroty.
-
+Kacper Taborski, Jakub Zyblikiewicz-Słowik
 20) Serwis Streamingowy (a'la Spotify): Zarządzanie użytkownikami, playlistami, biblioteką utworów i subskrypcjami.
 
 Kategoria C: Gry i Rozrywka (Najciekawsze na Diagramy Sekwencji)
