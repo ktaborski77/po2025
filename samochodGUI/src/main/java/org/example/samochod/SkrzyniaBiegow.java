@@ -1,3 +1,4 @@
+
 package org.example.samochod;
 
 public class SkrzyniaBiegow extends Komponent {
