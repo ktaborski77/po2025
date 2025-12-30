@@ -1,31 +1,36 @@
 package org.example.samochodgui;
 
-import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
+import javafx.scene.control.Alert;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.layout.AnchorPane;
 import javafx.stage.Stage;
 import org.example.samochod.*;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
-public class HelloController {
+// Implementacja interfejsu Listener
+public class HelloController implements Listener {
 
     private Samochod mojSamochod;
-    private Map<String, Samochod> garaz = new HashMap<>();
-    private AnimationTimer drivingTimer;
 
-    @FXML private ComboBox<String> carComboBox;
+    // Zmiana na ObservableList zgodnie z instrukcją
+    private ObservableList<Samochod> garaz = FXCollections.observableArrayList();
+
+    @FXML private ComboBox<Samochod> carComboBox;
     @FXML private ImageView carImageView;
+    @FXML private AnchorPane mapPane; // Potrzebne do obsługi kliknięć
+
     @FXML private TextField modelTextField, plateTextField, weightTextField, speedTextField;
     @FXML private TextField gearboxNameTextField, gearboxPriceTextField, gearboxWeightTextField, gearboxGearTextField;
     @FXML private TextField engineNameTextField, enginePriceTextField, engineWeightTextField, engineRpmTextField;
@@ -34,30 +39,69 @@ public class HelloController {
     @FXML
     public void initialize() {
         try {
+            // Upewnij się, że ścieżka do obrazka jest poprawna
             Image carImage = new Image(getClass().getResource("/org/example/samochodgui/car-icon.jpg").toExternalForm());
             carImageView.setImage(carImage);
         } catch (Exception e) {
             System.out.println("Nie znaleziono pliku graficznego.");
         }
 
+        // Konfiguracja ComboBox
+        carComboBox.setItems(garaz);
+
+        // Obsługa wyboru z listy [cite: 69]
+        carComboBox.setOnAction(event -> {
+            Samochod selected = carComboBox.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                // Jeśli mieliśmy wcześniej auto, odpinamy listenera
+                if (mojSamochod != null) {
+                    mojSamochod.removeListener(this);
+                }
+                mojSamochod = selected;
+                // Przypinamy listenera do nowego auta [cite: 152]
+                mojSamochod.addListener(this);
+
+                // Ustawiamy obrazek w aktualnej pozycji auta
+                carImageView.setLayoutX(mojSamochod.getAktualnaPozycja().getX());
+                carImageView.setLayoutY(mojSamochod.getAktualnaPozycja().getY());
+
+                refresh();
+            }
+        });
+
+        // Tworzenie przykładowego auta
         Silnik s1 = new Silnik("Ferrari", "V8", 200, 50000, 8000, 0);
         Sprzeglo sp1 = new Sprzeglo("Bosch", "Sport", 10, 2000, false);
         SkrzyniaBiegow sk1 = new SkrzyniaBiegow("ZF", "Manual 6", 50, 8000, 0, 6, sp1);
         Samochod auto1 = new Samochod("Ferrari 488", "K1 FERRARI", 1400, s1, sk1, new Pozycja(20, 50));
 
-        garaz.put(auto1.getModel(), auto1);
-        updateComboBox();
+        // Dodanie do listy (metoda addListener jest wywoływana przy wyborze z ComboBoxa)
+        garaz.add(auto1);
+        carComboBox.getSelectionModel().selectFirst(); // To wyzwoli onAction i podepnie listenera
 
-        drivingTimer = new AnimationTimer() {
-            @Override
-            public void handle(long now) {
-                if (mojSamochod != null) {
-                    mojSamochod.jedz();
-                    carImageView.setLayoutX(mojSamochod.getAktualnaPozycja().getX());
-                    refresh();
-                }
+        // Obsługa myszki na mapie
+        mapPane.setOnMouseClicked(event -> {
+            if (mojSamochod != null) {
+                double x = event.getX();
+                double y = event.getY();
+                // Wysyłamy auto do nowego celu [cite: 54]
+                mojSamochod.jedzDo(new Pozycja(x, y));
             }
-        };
+        });
+    }
+
+    // Metoda wymagana przez interfejs Listener [cite: 118]
+    @Override
+    public void update() {
+        // Zmiany w GUI muszą być robione w wątku JavaFX [cite: 58]
+        Platform.runLater(() -> {
+            refresh();
+            // Aktualizacja pozycji ikonki [cite: 60-61]
+            if (mojSamochod != null) {
+                carImageView.setLayoutX(mojSamochod.getAktualnaPozycja().getX());
+                carImageView.setLayoutY(mojSamochod.getAktualnaPozycja().getY());
+            }
+        });
     }
 
     public void refresh() {
@@ -97,11 +141,6 @@ public class HelloController {
         clutchNameTextField.clear(); clutchStateTextField.clear(); clutchWeightTextField.clear(); clutchPriceTextField.clear();
     }
 
-    private void updateComboBox() {
-        carComboBox.getItems().clear();
-        carComboBox.getItems().addAll(garaz.keySet());
-    }
-
     @FXML
     public void openAddCarWindow() throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("DodajSamochod.fxml"));
@@ -113,46 +152,85 @@ public class HelloController {
         stage.show();
     }
 
+    // Metoda dodająca auto do ObservableList [cite: 79]
     public void addCarToList(Samochod s) {
-        garaz.put(s.getModel(), s);
-        updateComboBox();
+        garaz.add(s);
+        carComboBox.getSelectionModel().select(s); // Automatycznie wybiera nowe auto
     }
 
     @FXML
     protected void onDeleteCarButton() {
-        String selected = carComboBox.getValue();
-        if (selected != null) {
-            drivingTimer.stop();
-            garaz.remove(selected);
-            mojSamochod = null;
-            updateComboBox();
-            refresh();
-            carImageView.setLayoutX(20);
+        if (mojSamochod != null) {
+            mojSamochod.zakonczWatek(); // Zatrzymujemy wątek usuwanego auta
+            mojSamochod.removeListener(this);
+            garaz.remove(mojSamochod); // ObservableList automatycznie odświeży ComboBox [cite: 75]
+
+            if (!garaz.isEmpty()) {
+                carComboBox.getSelectionModel().selectFirst();
+            } else {
+                mojSamochod = null;
+                clearFields();
+                carImageView.setLayoutX(20);
+                carImageView.setLayoutY(50);
+            }
         }
     }
 
     @FXML
     protected void onCloseMenu() {
+        // Zamykamy wątki wszystkich aut przed wyjściem
+        for(Samochod s : garaz) {
+            s.zakonczWatek();
+        }
         Platform.exit();
     }
 
-    @FXML
-    protected void onCarSelection(ActionEvent event) {
-        String selected = carComboBox.getValue();
-        if (selected != null) {
-            mojSamochod = garaz.get(selected);
-            carImageView.setLayoutX(mojSamochod.getAktualnaPozycja().getX());
-            refresh();
+    // Metoda wymagana w carComboBox.setOnAction, ale pusta tutaj,
+    // ponieważ logika jest wewnątrz listenera setOnAction w initialize
+    @FXML protected void onCarSelection(ActionEvent event) {}
+
+    // Metoda wyświetlająca błędy
+    public void pokazBlad(String wiadomosc) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("Błąd");
+        alert.setHeaderText(null);
+        alert.setContentText(wiadomosc);
+        alert.showAndWait();
+    }
+
+    // Sterowanie - z obsługą błędów [cite: 11]
+    @FXML protected void onStartButton() { if (mojSamochod != null) mojSamochod.wlacz(); }
+    @FXML protected void onStopButton() { if (mojSamochod != null) mojSamochod.wylacz(); }
+
+    // Drive button nie jest już potrzebny do AnimationTimer, ale może służyć jako reset "gazu"
+    @FXML protected void onDriveButton() {
+        // W tej implementacji ruch jest automatyczny w wątku Samochodu
+    }
+
+    @FXML protected void onIncreaseGearButton() {
+        if (mojSamochod != null) {
+            // Sprawdzenie czy sprzęgło jest wciśnięte (logika w SkrzyniaBiegow)
+            // Ale możemy dodać walidację GUI tutaj jeśli chcemy rzucić Alert
+            if (!mojSamochod.getSkrzynia().getSprzeglo().isStanSprzegla()) {
+                pokazBlad("Wciśnij sprzęgło, aby zmienić bieg!");
+            } else {
+                mojSamochod.getSkrzynia().zwiekszBieg();
+            }
         }
     }
 
-    @FXML protected void onStartButton() { if (mojSamochod != null) { mojSamochod.wlacz(); refresh(); } }
-    @FXML protected void onStopButton() { if (mojSamochod != null) { mojSamochod.wylacz(); drivingTimer.stop(); refresh(); } }
-    @FXML protected void onDriveButton() { if (mojSamochod != null) drivingTimer.start(); }
-    @FXML protected void onIncreaseGearButton() { if (mojSamochod != null) { mojSamochod.getSkrzynia().zwiekszBieg(); refresh(); } }
-    @FXML protected void onDecreaseGearButton() { if (mojSamochod != null) { mojSamochod.getSkrzynia().zmniejszBieg(); refresh(); } }
-    @FXML protected void onIncreaseRpmButton() { if (mojSamochod != null) { mojSamochod.getSilnik().zwiekszObroty(); refresh(); } }
-    @FXML protected void onDecreaseRpmButton() { if (mojSamochod != null) { mojSamochod.getSilnik().zmniejszObroty(); refresh(); } }
-    @FXML protected void onPressClutchButton() { if (mojSamochod != null) { mojSamochod.getSkrzynia().getSprzeglo().wcisnij(); refresh(); } }
-    @FXML protected void onReleaseClutchButton() { if (mojSamochod != null) { mojSamochod.getSkrzynia().getSprzeglo().zwolnij(); refresh(); } }
+    @FXML protected void onDecreaseGearButton() {
+        if (mojSamochod != null) {
+            if (!mojSamochod.getSkrzynia().getSprzeglo().isStanSprzegla()) {
+                pokazBlad("Wciśnij sprzęgło, aby zmienić bieg!");
+            } else {
+                mojSamochod.getSkrzynia().zmniejszBieg();
+            }
+        }
+    }
+
+    @FXML protected void onIncreaseRpmButton() { if (mojSamochod != null) mojSamochod.getSilnik().zwiekszObroty(); }
+    @FXML protected void onDecreaseRpmButton() { if (mojSamochod != null) mojSamochod.getSilnik().zmniejszObroty(); }
+    @FXML protected void onPressClutchButton() { if (mojSamochod != null) mojSamochod.getSkrzynia().getSprzeglo().wcisnij(); }
+    @FXML protected void onReleaseClutchButton() { if (mojSamochod != null) mojSamochod.getSkrzynia().getSprzeglo().zwolnij(); }
 }

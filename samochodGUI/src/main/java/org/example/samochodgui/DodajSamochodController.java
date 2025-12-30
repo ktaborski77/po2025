@@ -31,7 +31,7 @@ public class DodajSamochodController {
 
     @FXML
     public void initialize() {
-        // Przygotowanie przykładowych silników
+        // Przykładowe silniki
         Silnik s1 = new Silnik("VW", "1.9 TDI", 150, 2000, 5000, 0);
         Silnik s2 = new Silnik("Toyota", "Hybrid 2.0", 120, 15000, 6000, 0);
         Silnik s3 = new Silnik("Tesla", "Electric", 250, 30000, 15000, 0);
@@ -41,7 +41,10 @@ public class DodajSamochodController {
         dostepneSilniki.put(s3.getModel(), s3);
         engineComboBox.setItems(FXCollections.observableArrayList(dostepneSilniki.keySet()));
 
-        // Przygotowanie przykładowych skrzyń biegów
+        // Ponieważ obiekty Skrzynia i Silnik są "zużywane" przez jeden samochód w relacji kompozycji,
+        // w prawdziwej aplikacji tworzylibyśmy kopie. Tutaj dla uproszczenia (Lab) używamy tych samych referencji
+        // lub tworzymy nowe w locie.
+
         Sprzeglo sp = new Sprzeglo("Standard", "S1", 5, 500, false);
         SkrzyniaBiegow sk1 = new SkrzyniaBiegow("Manual", "M5", 30, 1000, 0, 5, sp);
         SkrzyniaBiegow sk2 = new SkrzyniaBiegow("Auto", "DSG", 60, 5000, 0, 7, sp);
@@ -62,22 +65,28 @@ public class DodajSamochodController {
             String selectedGearboxKey = gearboxComboBox.getValue();
 
             if (selectedEngineKey == null || selectedGearboxKey == null || model.isEmpty()) {
-                System.out.println("Wypełnij wszystkie pola!");
+                mainController.pokazBlad("Wypełnij wszystkie pola!");
                 return;
             }
 
-            Silnik wybranySilnik = dostepneSilniki.get(selectedEngineKey);
-            SkrzyniaBiegow wybranaSkrzynia = dostepneSkrzynie.get(selectedGearboxKey);
+            // Tworzymy nowe instancje komponentów na bazie wybranych (proste klonowanie dla bezpieczeństwa wątków)
+            Silnik wzorzecSilnik = dostepneSilniki.get(selectedEngineKey);
+            Silnik nowySilnik = new Silnik(wzorzecSilnik.getProducent(), wzorzecSilnik.getModel(), wzorzecSilnik.getWaga(), wzorzecSilnik.getCena(), 6000, 0);
 
-            Samochod nowy = new Samochod(model, registration, weight, wybranySilnik, wybranaSkrzynia, new Pozycja(20, 50));
+            SkrzyniaBiegow wzorzecSkrzynia = dostepneSkrzynie.get(selectedGearboxKey);
+            Sprzeglo noweSprzeglo = new Sprzeglo("Gen", "X", 10, 100, false);
+            SkrzyniaBiegow nowaSkrzynia = new SkrzyniaBiegow(wzorzecSkrzynia.getProducent(), wzorzecSkrzynia.getModel(), wzorzecSkrzynia.getWaga(), wzorzecSkrzynia.getCena(), 0, 6, noweSprzeglo);
 
-            mainController.addCarToList(nowy);
+            // Tworzenie samochodu (automatycznie uruchamia jego wątek w konstruktorze)
+            Samochod nowy = new Samochod(model, registration, weight, nowySilnik, nowaSkrzynia, new Pozycja(20, 50));
+
+            mainController.addCarToList(nowy); // [cite: 79]
 
             Stage stage = (Stage) confirmButton.getScene().getWindow();
             stage.close();
 
         } catch (NumberFormatException e) {
-            System.out.println("Błąd: Waga musi być liczbą!");
+            mainController.pokazBlad("Błąd: Waga musi być liczbą!");
         }
     }
 
